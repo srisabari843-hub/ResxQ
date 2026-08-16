@@ -68,7 +68,9 @@ data class ChatMessage(
     val isMine: Boolean = false,
     val isSystem: Boolean = false,
     var deliveryStatus: DeliveryStatus = DeliveryStatus.DELIVERED_ALL,
-    var statusText: String = ""
+    var statusText: String = "",
+    var isSyncedToDashboard: Boolean = false,
+    var destinationLabel: String = "📱 Offline Mesh (Pending Sync)"
 )
 
 class MainActivity : ComponentActivity() {
@@ -107,9 +109,34 @@ class MainActivity : ComponentActivity() {
                 connectedPeersList.clear()
                 connectedPeersList.addAll(peers.map { PeerDevice(it, it) })
                 statusText.value = if (peers.isEmpty()) {
-                    if (isSessionActive.value) "Searching for mesh peers..." else "Disconnected"
+                    if (isSessionActive.value) "Searching for mesh & web peers..." else "Disconnected"
                 } else {
                     "Connected to ${peers.size} peer(s)"
+                }
+            }
+        }
+
+        lifecycleScope.launch {
+            meshManager.relayStatus.collect { rStatus ->
+                if (isSessionActive.value && connectedPeersList.isEmpty()) {
+                    statusText.value = "Mesh Searching | $rStatus"
+                }
+            }
+        }
+
+        lifecycleScope.launch {
+            meshManager.sosAlerts.collect { sosList ->
+                for (sos in sosList) {
+                    val index = messages.indexOfFirst { it.id == sos.sosId || it.text == sos.message }
+                    if (index >= 0) {
+                        val msg = messages[index]
+                        if (msg.isSyncedToDashboard != sos.isSyncedToRescueTeam) {
+                            messages[index] = msg.copy(
+                                isSyncedToDashboard = sos.isSyncedToRescueTeam,
+                                destinationLabel = if (sos.isSyncedToRescueTeam) "🌐 Synced to Online Dashboard" else "📱 Stored for Offline Mesh / Gateway Sync"
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -163,6 +190,7 @@ class MainActivity : ComponentActivity() {
                         saveDisplayName(newName)
                     },
                     onSend = { text -> broadcastMessage(text) },
+                    onBroadcastSos = { type, msg -> broadcastSosAlert(type, msg) },
                     onToggleSession = {
                         if (isSessionActive.value) {
                             stopSession()
@@ -173,6 +201,18 @@ class MainActivity : ComponentActivity() {
                 )
             }
         }
+    }
+
+    private fun broadcastSosAlert(emergencyType: String, messageText: String) {
+        val myName = myDisplayName.value.trim().ifEmpty { Build.MODEL }
+        val sos = meshManager.broadcastSos(
+            victimName = myName,
+            urgency = com.yourname.mychatapp.sos.SosUrgency.CRITICAL,
+            emergencyType = emergencyType,
+            messageText = messageText,
+            locationText = "Disaster Zone Sector 4"
+        )
+        addSystemMessage("🚨 SOS DISTRESS BROADCASTED: [${sos.emergencyType}] ${sos.message}")
     }
 
     private fun loadSavedDisplayName() {
@@ -216,7 +256,9 @@ class MainActivity : ComponentActivity() {
         isSessionActive.value = true
         statusText.value = "Searching for nearby peers..."
         meshManager.start()
-        addSystemMessage("Started Multi-Hop Mesh Session")
+        val displayName = myDisplayName.value.trim().ifEmpty { Build.MODEL }
+        meshManager.startCloudRelay("https://85be265029a6ad.lhr.life", displayName)
+        addSystemMessage("Started Multi-Hop Mesh & Web Relay Session")
     }
 
     private fun stopSession() {
@@ -231,12 +273,14 @@ class MainActivity : ComponentActivity() {
         
         val myName = myDisplayName.value.trim().ifEmpty { Build.MODEL }
         
-        // Wrap our text in a small JSON to include senderName
-        val payloadObj = JSONObject().apply {
-            put("text", text)
-            put("senderName", myName)
-        }
-        meshManager.sendMessage(payloadObj.toString(), null)
+        // Every normal text message is automatically saved, mesh-forwarded, and synced to Rescue Dashboard upon network connection
+        meshManager.broadcastSos(
+            victimName = myName,
+            urgency = com.yourname.mychatapp.sos.SosUrgency.CRITICAL,
+            emergencyType = "Emergency Message",
+            messageText = text,
+            locationText = "Disaster Zone Sector B"
+        )
     }
 
     private fun addSystemMessage(text: String) {
@@ -280,6 +324,7 @@ fun ChatScreen(
     myDisplayName: String,
     onDisplayNameChange: (String) -> Unit,
     onSend: (String) -> Unit,
+    onBroadcastSos: (String, String) -> Unit,
     onToggleSession: () -> Unit
 ) {
     var messageText by remember { mutableStateOf("") }
@@ -496,6 +541,21 @@ fun ChatScreen(
                     ) {
                         Text("Send")
                     }
+
+                    Spacer(modifier = Modifier.width(6.dp))
+
+                    Button(
+                        onClick = {
+                            val sosMsg = if (messageText.isNotBlank()) messageText else "Emergency! Need immediate rescue assistance!"
+                            onBroadcastSos("Medical Emergency", sosMsg)
+                            messageText = ""
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFDC2626)),
+                        shape = RoundedCornerShape(24.dp),
+                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 12.dp)
+                    ) {
+                        Text("🚨 SOS", color = Color.White, fontWeight = FontWeight.Bold)
+                    }
                 }
             }
         }
@@ -548,6 +608,7 @@ fun MyMessageBubble(message: ChatMessage) {
                     color = MaterialTheme.colorScheme.onPrimary
                 )
                 Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(4.dp))
                 Row(
                     modifier = Modifier.align(Alignment.End),
                     verticalAlignment = Alignment.CenterVertically,
@@ -558,6 +619,20 @@ fun MyMessageBubble(message: ChatMessage) {
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.75f),
                         fontSize = 10.sp
+                    )
+                }
+                Spacer(modifier = Modifier.height(4.dp))
+                Surface(
+                    color = if (message.isSyncedToDashboard) Color(0xFF10B981) else Color(0xFFF97316),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text(
+                        text = if (message.isSyncedToDashboard) "🌐 Synced to Online Dashboard" else "📱 Stored for Offline Mesh / Gateway Sync",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color.White,
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                     )
                 }
             }
@@ -604,6 +679,20 @@ fun TheirMessageBubble(message: ChatMessage) {
                     fontSize = 10.sp,
                     modifier = Modifier.align(Alignment.End)
                 )
+                Spacer(modifier = Modifier.height(4.dp))
+                Surface(
+                    color = if (message.isSyncedToDashboard) Color(0xFF10B981) else Color(0xFFF97316),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text(
+                        text = if (message.isSyncedToDashboard) "🌐 Synced to Online Dashboard" else "📱 Stored for Offline Mesh / Gateway Sync",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color.White,
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                    )
+                }
             }
         }
     }

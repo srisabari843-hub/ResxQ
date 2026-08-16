@@ -1,0 +1,15 @@
+{
+  "name": "resxq-rescue-web-application",
+  "version": "1.0.0",
+  "description": "ResxQ Disaster Rescue Team Command Center & Store-and-Forward Gateway Server",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "socket.io": "^4.7.5"
+  }
+}

@@ -37,6 +37,7 @@ android {
 
 dependencies {
     implementation("com.google.android.gms:play-services-nearby:19.3.0")
+    implementation("io.socket:socket.io-client:2.1.0")
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.compose.material3)

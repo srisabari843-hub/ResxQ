@@ -1,0 +1,14 @@
+{
+  "name": "resxq-web-relay",
+  "version": "1.0.0",
+  "description": "Web Relay Server connecting Web App and Android ResxQ Mesh App",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "socket.io": "^4.7.5",
+    "cors": "^2.8.5"
+  }
+}

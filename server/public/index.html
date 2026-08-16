@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ResxQ - Disaster Rescue Team Command Center</title>
+  <!-- Google Fonts & Font Awesome Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="command-container">
+    <!-- Top Rescue Operations Header -->
+    <header class="command-header">
+      <div class="brand-group">
+        <div class="brand-badge"><i class="fa-solid fa-truck-medical"></i></div>
+        <div>
+          <h1 class="brand-title">ResxQ Rescue Operations Command Center</h1>
+          <p class="brand-subtitle">Disaster Response • Store-and-Forward Mesh Gateway • Real-Time SOS Alerts</p>
+        </div>
+      </div>
+
+      <!-- Live Emergency Counters -->
+      <div class="header-metrics">
+        <div class="metric-card critical">
+          <div class="metric-icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
+          <div>
+            <span class="metric-value" id="criticalSosCount">0</span>
+            <span class="metric-label">Critical SOS</span>
+          </div>
+        </div>
+
+        <div class="metric-card gateway">
+          <div class="metric-icon"><i class="fa-solid fa-tower-cell"></i></div>
+          <div>
+            <span class="metric-value" id="gatewayNodeCount">0</span>
+            <span class="metric-label">Gateway Nodes</span>
+          </div>
+        </div>
+
+        <div class="metric-card rescued">
+          <div class="metric-icon"><i class="fa-solid fa-circle-check"></i></div>
+          <div>
+            <span class="metric-value" id="rescuedCount">0</span>
+            <span class="metric-label">Rescued</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Live Gateway Status Badge -->
+      <div class="server-status" id="serverStatusBadge">
+        <div class="pulse-dot"></div>
+        <span id="serverStatusText">Gateway Active</span>
+      </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <div class="main-layout">
+      <!-- Sidebar / Filters & Peer Nodes -->
+      <aside class="sidebar-panel">
+        <!-- Audio Alert Toggle -->
+        <div class="control-card">
+          <div class="card-header">
+            <h3><i class="fa-solid fa-bell"></i> Audio Alarm</h3>
+            <button id="toggleAudioBtn" class="btn-toggle active"><i class="fa-solid fa-volume-high"></i> ON</button>
+          </div>
+          <p class="small-desc">Play siren when new gateway SOS signals arrive.</p>
+        </div>
+
+        <!-- Filter Controls -->
+        <div class="filter-card">
+          <h3><i class="fa-solid fa-filter"></i> Emergency Filters</h3>
+          <div class="filter-group">
+            <label>Urgency Level</label>
+            <select id="urgencyFilter">
+              <option value="ALL">All Urgencies</option>
+              <option value="CRITICAL">🔴 Critical Only</option>
+              <option value="HIGH">🟠 High Urgency</option>
+              <option value="MEDIUM">🟡 Medium</option>
+            </select>
+          </div>
+
+          <div class="filter-group">
+            <label>Rescue Status</label>
+            <select id="statusFilter">
+              <option value="ALL">All Statuses</option>
+              <option value="PENDING">⏳ Pending Rescue</option>
+              <option value="DISPATCHED">🚁 Team Dispatched</option>
+              <option value="RESCUED">✅ Rescued</option>
+            </select>
+          </div>
+
+          <button id="exportCsvBtn" class="btn-export">
+            <i class="fa-solid fa-file-csv"></i> Export Incident Report (CSV)
+          </button>
+        </div>
+
+        <!-- Gateway Mesh Devices List -->
+        <div class="nodes-card">
+          <h3><i class="fa-solid fa-circle-nodes"></i> Mesh Gateway Devices (<span id="peerCountLabel">0</span>)</h3>
+          <div id="peersContainer" class="peers-scroll">
+            <div class="empty-text">No mesh devices connected</div>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Center Rescue SOS Feed -->
+      <main class="dashboard-content">
+        <div class="section-title-bar">
+          <h2><i class="fa-solid fa-kit-medical"></i> Victim Distress Signals & Gateway Sync Feed</h2>
+          <span class="help-symbol-badge"><i class="fa-solid fa-sos"></i> AUTOMATIC GATEWAY RETRIEVAL</span>
+        </div>
+
+        <!-- SOS Feed Cards Grid -->
+        <div id="sosAlertsContainer" class="sos-grid">
+          <div class="loading-state">
+            <i class="fa-solid fa-spinner fa-spin"></i>
+            <p>Listening for Gateway Sync & SOS Help Signals...</p>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- Audio Siren Generator via Web Audio API -->
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
